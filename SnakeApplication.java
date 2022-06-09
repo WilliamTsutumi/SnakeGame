@@ -17,7 +17,7 @@ public class SnakeApplication extends Application {
     
     @Override
     public void start(Stage primaryStage) {
-         uiImpl = new UserInterfaceImpl();
+         uiImpl = new UserInterfaceImpl(primaryStage);
     }
 
     /**
