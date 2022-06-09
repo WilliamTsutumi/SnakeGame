@@ -58,31 +58,7 @@ public class UserInterfaceImpl implements ActionListener {
     
     private void drawBackground(Group root) {
         Scene scene = new Scene(root, SCENE_WIDTH, SCENE_HEIGHT, Color.BLACK);
-//        Grid lines
-//        for(int i = 1;i < (SCENE_WIDTH / UNIT_SIZE); i++) {
-//            Rectangle verticalLine = new Rectangle(
-//                    i * UNIT_SIZE,
-//                    0,
-//                    1,
-//                    SCENE_HEIGHT
-//            );
-//            verticalLine.setFill(Color.WHITE);
-//            
-//            root.getChildren().add(verticalLine);
-//        }
-//        
-//        for(int i = 1;i < (SCENE_HEIGHT / UNIT_SIZE); i++) {
-//            Rectangle horizontalLine = new Rectangle(
-//                    0,
-//                    i * UNIT_SIZE,
-//                    SCENE_WIDTH,
-//                    1
-//            );
-//            horizontalLine.setFill(Color.WHITE);
-//            
-//            root.getChildren().add(horizontalLine);
-//        }
-        
+
         stage.setTitle("Snake Game");
         stage.setScene(scene);
     }
@@ -90,11 +66,24 @@ public class UserInterfaceImpl implements ActionListener {
     private void startGame() {
         random = new Random();
         newFood();
+        startSnake();
         move = SnakeMovement.RIGHT;
         running = true;
         
         timer = new Timer(DELAY, this);
         timer.start();
+    }
+    
+    private void startSnake() {
+        for (int i = 0; i < bodyParts; i++) {
+            int xCabeca = bodyParts;
+            int yCabeca = (SCENE_HEIGHT/UNIT_SIZE)/2;
+            
+            x[i] = xCabeca - i;
+            y[i] = yCabeca;
+            System.out.print("x: " + x[i]);
+            System.out.println(" y: " + y[i]);
+        }
     }
     
     private void newFood() {
@@ -122,7 +111,7 @@ public class UserInterfaceImpl implements ActionListener {
         }
         //cada bodypart recebe as coordenadas do próximo bodypart
         //exceto a cebeça, que já foi ajustada
-        for (int i = 1; i < bodyParts; i++) {
+        for (int i = bodyParts-1; i > 0; i--) {
             x[i] = x[i-1];
             y[i] = y[i-1];
         }
@@ -144,17 +133,27 @@ public class UserInterfaceImpl implements ActionListener {
         //colidiu com os limites da tela
         if ((x[0] > lastHorizontalUnit) || (y[0] > lastVerticalUnit)) {
             running = false;
+            System.out.println("Screen border collision");
         }
         //colidiu com o próprio corpo
         for(int i = 0; i < bodyParts; i++) {
             if ((x[0] == x[i]) && (y[0] == y[i])) {
                 running = false;
+                System.out.println("Body collision");
+                System.out.println("x:" + x[i]);
+                System.out.println("y:" + y[i]);
             }
         }
     }
     
     private void updateView() {
-        //snake view
+        root.getChildren().clear();
+        drawSnake();
+        drawFood();
+        drawGridLines();
+    }
+
+    private void drawSnake() {
         for (int i = 0; i < bodyParts; i++) {
             Rectangle bodyPart = new Rectangle(
                     x[i] * UNIT_SIZE,
@@ -165,8 +164,10 @@ public class UserInterfaceImpl implements ActionListener {
             bodyPart.setFill(Color.GREEN);
             
             root.getChildren().add(bodyPart);
-        }
-        //food view
+        }        
+    }
+    
+    private void drawFood() {
         Circle food = new Circle(
                 (foodX+0.5)*UNIT_SIZE,
                 (foodY+0.5)*UNIT_SIZE,
@@ -176,7 +177,32 @@ public class UserInterfaceImpl implements ActionListener {
         
         root.getChildren().add(food);
     }
-
+    
+    private void drawGridLines() {
+        for(int i = 1;i < (SCENE_WIDTH / UNIT_SIZE); i++) {
+            Rectangle verticalLine = new Rectangle(
+                    i * UNIT_SIZE,
+                    0,
+                    1,
+                    SCENE_HEIGHT
+            );
+            verticalLine.setFill(Color.WHITE);
+            
+            root.getChildren().add(verticalLine);
+        }
+        for(int i = 1;i < (SCENE_HEIGHT / UNIT_SIZE); i++) {
+            Rectangle horizontalLine = new Rectangle(
+                    0,
+                    i * UNIT_SIZE,
+                    SCENE_WIDTH,
+                    1
+            );
+            horizontalLine.setFill(Color.WHITE);
+            
+            root.getChildren().add(horizontalLine);
+        }
+    }
+    
     @Override
     public void actionPerformed(ActionEvent e) {
         
