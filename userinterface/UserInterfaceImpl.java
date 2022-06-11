@@ -4,16 +4,21 @@
  */
 package snake.userinterface;
 
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.KeyListener;
+import java.awt.event.*;
 import java.util.Random;
 import javafx.application.Platform;
-import javafx.scene.Group;
-import javafx.scene.Scene;
+import javafx.event.EventHandler;
+import javafx.scene.input.KeyEvent;;
+import javafx.scene.*;
+import javafx.scene.input.KeyCode;
+import javafx.scene.shape.*;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Circle;
-import javafx.scene.shape.Rectangle;
+import javafx.stage.Stage;
+import javax.swing.Timer;
+import snake.constants.SnakeMovement;
+import javafx.scene.*;
+import javafx.scene.shape.*;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javax.swing.Timer;
 import snake.constants.SnakeMovement;
@@ -22,12 +27,14 @@ import snake.constants.SnakeMovement;
  *
  * @author William-UEM
  */
-public class UserInterfaceImpl implements ActionListener {    
+//public class UserInterfaceImpl extends JPanel implements ActionListener {
+public class UserInterfaceImpl implements ActionListener,
+        EventHandler<KeyEvent> {
     
     private static final int  SCENE_WIDTH = 600;
     private static final int SCENE_HEIGHT = 600;
     private static final int    UNIT_SIZE = 25;
-    private static final int    MAX_UNITS = (SCENE_HEIGHT*SCENE_WIDTH)/UNIT_SIZE;
+    private static final int    MAX_UNITS = (SCENE_HEIGHT*SCENE_WIDTH)/(UNIT_SIZE*UNIT_SIZE);
     private static final int        DELAY = 50;
     
     private final Group  root;
@@ -54,6 +61,51 @@ public class UserInterfaceImpl implements ActionListener {
         startGame();
         drawBackground(root);
         stage.show();
+        //Não encontrei como eu poderia chamar o método 
+        //handle da classe UserInterfaceImpl, acabou
+        //que ficou esta gambiarra
+        stage.addEventHandler(KeyEvent.KEY_PRESSED,
+                new EventHandler<KeyEvent>() {
+                    @Override
+                    public void handle(KeyEvent e) {
+                        KeyCode code = e.getCode();
+                        if(!movimentoValido(code)) return;
+                        
+                        switch(code) {
+                        case UP:
+                            move = SnakeMovement.UP;
+                            break;
+                            
+                        case DOWN:
+                            move = SnakeMovement.DOWN;
+                            break;
+                            
+                        case LEFT:
+                            move = SnakeMovement.LEFT;
+                            break;
+                            
+                        case RIGHT:
+                            move = SnakeMovement.RIGHT;
+                            break;
+                        }
+                    };
+        });
+    }
+    
+    private boolean movimentoValido(KeyCode keyCode) {
+        if (keyCode == KeyCode.LEFT) {
+            return move != SnakeMovement.RIGHT;
+            
+        } else if (keyCode == KeyCode.RIGHT) {
+            return move != SnakeMovement.LEFT;
+            
+        } else if (keyCode == KeyCode.UP) {
+            return move != SnakeMovement.DOWN;
+                    
+        } else if (keyCode == KeyCode.DOWN) {
+            return move != SnakeMovement.UP;
+        }
+        return false;
     }
     
     private void drawBackground(Group root) {
@@ -81,8 +133,6 @@ public class UserInterfaceImpl implements ActionListener {
             
             x[i] = xCabeca - i;
             y[i] = yCabeca;
-            System.out.print("x: " + x[i]);
-            System.out.println(" y: " + y[i]);
         }
     }
     
@@ -92,6 +142,13 @@ public class UserInterfaceImpl implements ActionListener {
     }
     
     private void moveSnake() {
+        //Cada bodypart recebe as coordenadas do próximo bodypart
+        //não altera as coordenadas da cabeça.
+        for (int i = bodyParts-1; i > 0; i--) {
+            x[i] = x[i-1];
+            y[i] = y[i-1];
+        }
+        //Movimento da cabeça
         switch(move) {
             case RIGHT:
                 x[0]++;
@@ -102,22 +159,17 @@ public class UserInterfaceImpl implements ActionListener {
                 break;
                 
             case UP:
-                y[0]++;
+                y[0]--;
                 break;
                 
             case DOWN:
-                y[0]--;
+                y[0]++;
                 break;
-        }
-        //cada bodypart recebe as coordenadas do próximo bodypart
-        //exceto a cebeça, que já foi ajustada
-        for (int i = bodyParts-1; i > 0; i--) {
-            x[i] = x[i-1];
-            y[i] = y[i-1];
         }
     }
     
     private void checkFood() {
+        // Se a cabeça está na mesma posição que a comida
         if ((x[0] == foodX) && (y[0] == foodY)) {
             newFood();
             //posição da nova parte da cobra é igual à última
@@ -130,27 +182,34 @@ public class UserInterfaceImpl implements ActionListener {
     private void checkCollisions() {
         int lastHorizontalUnit = SCENE_WIDTH/UNIT_SIZE;
         int   lastVerticalUnit = SCENE_HEIGHT/UNIT_SIZE;
-        //colidiu com os limites da tela
-        if ((x[0] > lastHorizontalUnit) || (y[0] > lastVerticalUnit)) {
+        //Colidiu com as bordas de tela
+        if (
+                (x[0] >= lastHorizontalUnit) 
+                || (y[0] >= lastVerticalUnit)
+                || (x[0] < 0)
+                || (y[0] < 0)
+        ){
             running = false;
             System.out.println("Screen border collision");
         }
-        //colidiu com o próprio corpo
-        for(int i = 0; i < bodyParts; i++) {
+        //Colidiu com o próprio corpo
+        for(int i = 1; i < bodyParts; i++) {
             if ((x[0] == x[i]) && (y[0] == y[i])) {
                 running = false;
                 System.out.println("Body collision");
+                System.out.println("i: " + i);
                 System.out.println("x:" + x[i]);
                 System.out.println("y:" + y[i]);
             }
         }
+        if(!running) timer.stop();
     }
     
     private void updateView() {
         root.getChildren().clear();
-        drawSnake();
         drawFood();
-        drawGridLines();
+        drawSnake();
+//        drawGridLines();
     }
 
     private void drawSnake() {
@@ -161,7 +220,11 @@ public class UserInterfaceImpl implements ActionListener {
                     UNIT_SIZE,
                     UNIT_SIZE
             );
-            bodyPart.setFill(Color.GREEN);
+            // Pinta a cabeça de GREEN e o resto do corpo de DARKGREEN
+            if (i == 0)
+                bodyPart.setFill(Color.GREEN);
+            else
+                bodyPart.setFill(Color.DARKGREEN);
             
             root.getChildren().add(bodyPart);
         }        
@@ -209,7 +272,7 @@ public class UserInterfaceImpl implements ActionListener {
         if(running) {
             moveSnake();
             checkFood();
-//            checkCollisions();
+            checkCollisions();
         }
         
         Platform.runLater(new Runnable() {
@@ -218,5 +281,13 @@ public class UserInterfaceImpl implements ActionListener {
                 updateView();
             }
         });
+    }
+    
+    @Override
+    public void handle(KeyEvent event) {
+        System.out.println("Botao apertado");
+        if (event.getEventType() == KeyEvent.KEY_PRESSED) {
+            
+        }
     }
 }
