@@ -10,14 +10,11 @@ import javafx.application.Platform;
 import javafx.event.EventHandler;
 import javafx.scene.input.KeyEvent;;
 import javafx.scene.*;
-import javafx.scene.input.KeyCode;
 import javafx.scene.shape.*;
-import javafx.scene.paint.Color;
-import javafx.stage.Stage;
-import javax.swing.Timer;
-import snake.constants.SnakeMovement;
-import javafx.scene.*;
-import javafx.scene.shape.*;
+import snake.game.Snake;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Font;
+import javafx.scene.control.Label;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 import javax.swing.Timer;
@@ -27,25 +24,22 @@ import snake.constants.SnakeMovement;
  *
  * @author William-UEM
  */
-//public class UserInterfaceImpl extends JPanel implements ActionListener {
 public class UserInterfaceImpl implements ActionListener,
         EventHandler<KeyEvent> {
     
-    private static final int  SCENE_WIDTH = 600;
-    private static final int SCENE_HEIGHT = 600;
-    private static final int    UNIT_SIZE = 25;
-    private static final int    MAX_UNITS = (SCENE_HEIGHT*SCENE_WIDTH)/(UNIT_SIZE*UNIT_SIZE);
-    private static final int        DELAY = 50;
+    private static final int        SCENE_WIDTH = 1200;
+    private static final int       SCENE_HEIGHT = 700;
+    private static final int          UNIT_SIZE = 25;
+    private static final int              DELAY = 50;
+    private static final int INITIAL_BODY_PARTS = 6;
+    private static final int     MAX_BODY_PARTS = (SCENE_HEIGHT*SCENE_WIDTH)/(UNIT_SIZE*UNIT_SIZE);
     
     private final Group  root;
     private final Stage stage;
 //    o i-ésimo elemento destes arrays armazena
 //    a posição do i-ésimo segmento da cobra
-    int[] x = new int[MAX_UNITS];
-    int[] y = new int[MAX_UNITS];
-    SnakeMovement move;
-    int bodyParts = 6;
-    int foodEaten;
+    Snake snake;
+    int score;
     int foodX;
     int foodY;
     
@@ -64,48 +58,11 @@ public class UserInterfaceImpl implements ActionListener,
         //Não encontrei como eu poderia chamar o método 
         //handle da classe UserInterfaceImpl, acabou
         //que ficou esta gambiarra
-        stage.addEventHandler(KeyEvent.KEY_PRESSED,
-                new EventHandler<KeyEvent>() {
-                    @Override
-                    public void handle(KeyEvent e) {
-                        KeyCode code = e.getCode();
-                        if(!movimentoValido(code)) return;
-                        
-                        switch(code) {
-                        case UP:
-                            move = SnakeMovement.UP;
-                            break;
-                            
-                        case DOWN:
-                            move = SnakeMovement.DOWN;
-                            break;
-                            
-                        case LEFT:
-                            move = SnakeMovement.LEFT;
-                            break;
-                            
-                        case RIGHT:
-                            move = SnakeMovement.RIGHT;
-                            break;
-                        }
-                    };
+        stage.addEventHandler(KeyEvent.KEY_PRESSED, (KeyEvent e) -> {
+            if (!timer.isRunning()) startGame();
+            
+            snake.updateMove(e);
         });
-    }
-    
-    private boolean movimentoValido(KeyCode keyCode) {
-        if (keyCode == KeyCode.LEFT) {
-            return move != SnakeMovement.RIGHT;
-            
-        } else if (keyCode == KeyCode.RIGHT) {
-            return move != SnakeMovement.LEFT;
-            
-        } else if (keyCode == KeyCode.UP) {
-            return move != SnakeMovement.DOWN;
-                    
-        } else if (keyCode == KeyCode.DOWN) {
-            return move != SnakeMovement.UP;
-        }
-        return false;
     }
     
     private void drawBackground(Group root) {
@@ -117,23 +74,18 @@ public class UserInterfaceImpl implements ActionListener,
 
     private void startGame() {
         random = new Random();
-        newFood();
-        startSnake();
-        move = SnakeMovement.RIGHT;
         running = true;
+        score = 0;
+        
+        newFood();
+        snake = new Snake(
+                INITIAL_BODY_PARTS,
+                MAX_BODY_PARTS,
+                SnakeMovement.RIGHT
+        );
         
         timer = new Timer(DELAY, this);
         timer.start();
-    }
-    
-    private void startSnake() {
-        for (int i = 0; i < bodyParts; i++) {
-            int xCabeca = bodyParts;
-            int yCabeca = (SCENE_HEIGHT/UNIT_SIZE)/2;
-            
-            x[i] = xCabeca - i;
-            y[i] = yCabeca;
-        }
     }
     
     private void newFood() {
@@ -141,45 +93,22 @@ public class UserInterfaceImpl implements ActionListener,
         foodY = random.nextInt(SCENE_HEIGHT/UNIT_SIZE);
     }
     
-    private void moveSnake() {
-        //Cada bodypart recebe as coordenadas do próximo bodypart
-        //não altera as coordenadas da cabeça.
-        for (int i = bodyParts-1; i > 0; i--) {
-            x[i] = x[i-1];
-            y[i] = y[i-1];
-        }
-        //Movimento da cabeça
-        switch(move) {
-            case RIGHT:
-                x[0]++;
-                break;
-                
-            case LEFT:
-                x[0]--;
-                break;
-                
-            case UP:
-                y[0]--;
-                break;
-                
-            case DOWN:
-                y[0]++;
-                break;
-        }
-    }
-    
-    private void checkFood() {
+    private void checkFood(int[] x, int[] y, int bodyParts) {
         // Se a cabeça está na mesma posição que a comida
         if ((x[0] == foodX) && (y[0] == foodY)) {
             newFood();
-            //posição da nova parte da cobra é igual à última
+            // A nova parte do snake recebe as coordenadas da última parte
             x[bodyParts] = x[bodyParts-1];
             y[bodyParts] = y[bodyParts-1];
-            bodyParts++;
+            
+            snake.setX(x);
+            snake.setY(y);
+            snake.setBodyParts(++bodyParts);
+            score++;
         }
     }
     
-    private void checkCollisions() {
+    private void checkCollisions(int[] x, int[] y, int bodyParts) {
         int lastHorizontalUnit = SCENE_WIDTH/UNIT_SIZE;
         int   lastVerticalUnit = SCENE_HEIGHT/UNIT_SIZE;
         //Colidiu com as bordas de tela
@@ -190,29 +119,32 @@ public class UserInterfaceImpl implements ActionListener,
                 || (y[0] < 0)
         ){
             running = false;
-            System.out.println("Screen border collision");
         }
         //Colidiu com o próprio corpo
         for(int i = 1; i < bodyParts; i++) {
             if ((x[0] == x[i]) && (y[0] == y[i])) {
                 running = false;
-                System.out.println("Body collision");
-                System.out.println("i: " + i);
-                System.out.println("x:" + x[i]);
-                System.out.println("y:" + y[i]);
             }
         }
-        if(!running) timer.stop();
+        if (!running) timer.stop();
     }
     
     private void updateView() {
         root.getChildren().clear();
+        
+        if (!running) drawGameOverScreen();
+        
+        int[] x = snake.getX();
+        int[] y = snake.getY();
+        int bodyParts = snake.getBodyParts();
+        
         drawFood();
-        drawSnake();
+        drawSnake(x, y, bodyParts);
+        showScore(root);
 //        drawGridLines();
     }
 
-    private void drawSnake() {
+    private void drawSnake(int[] x, int[] y, int bodyParts) {
         for (int i = 0; i < bodyParts; i++) {
             Rectangle bodyPart = new Rectangle(
                     x[i] * UNIT_SIZE,
@@ -266,13 +198,42 @@ public class UserInterfaceImpl implements ActionListener,
         }
     }
     
+    private void drawGameOverScreen() {
+        Label text = new Label("Game Over");
+        text.setTextFill(Color.RED);
+        
+        Font font = Font.font("Ink Free", FontWeight.BOLD, 40);
+
+        text.setFont(font);
+        text.setTranslateX((SCENE_WIDTH/2)-100);
+        text.setTranslateY((SCENE_HEIGHT/2)-50);
+        
+        root.getChildren().add(text);
+    }
+    
+    private void showScore(Group root) {
+        Label score = new Label();
+        Font font = Font.font("Ink Free", FontWeight.BOLD, 40);
+        
+        score.setText("Score: "+this.score);
+        score.setTextFill(Color.RED);
+        score.setFont(font);
+        score.setTranslateX((SCENE_WIDTH/2)-100);
+        
+        root.getChildren().add(score);
+    }
+    
     @Override
     public void actionPerformed(ActionEvent e) {
         
         if(running) {
-            moveSnake();
-            checkFood();
-            checkCollisions();
+            int[] x = Snake.getX();
+            int[] y = Snake.getY();
+            int bodyParts = Snake.getBodyParts();
+            
+            snake.move();
+            checkFood(x, y, bodyParts);
+            checkCollisions(x, y, bodyParts);
         }
         
         Platform.runLater(new Runnable() {
