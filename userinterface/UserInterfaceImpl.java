@@ -11,6 +11,7 @@ import javafx.event.EventHandler;
 import javafx.scene.input.KeyEvent;;
 import javafx.scene.*;
 import javafx.scene.shape.*;
+import snake.game.Food;
 import snake.game.Snake;
 import javafx.scene.text.FontWeight;
 import javafx.scene.text.Font;
@@ -26,27 +27,27 @@ import snake.constants.SnakeMovement;
  */
 public class UserInterfaceImpl implements ActionListener,
         EventHandler<KeyEvent> {
-    
-    private static final int        SCENE_WIDTH = 1200;
-    private static final int       SCENE_HEIGHT = 700;
+    // Constantes da janela
+    private static final int        SCENE_WIDTH = 600;
+    private static final int       SCENE_HEIGHT = 600;
     private static final int          UNIT_SIZE = 25;
+    private static final int   HORIZONTAL_UNITS = SCENE_WIDTH/UNIT_SIZE;
+    private static final int     VERTICAL_UNITS = SCENE_HEIGHT/UNIT_SIZE;
     private static final int              DELAY = 50;
+    // Constantes do Snake
     private static final int INITIAL_BODY_PARTS = 6;
     private static final int     MAX_BODY_PARTS = (SCENE_HEIGHT*SCENE_WIDTH)/(UNIT_SIZE*UNIT_SIZE);
     
     private final Group  root;
     private final Stage stage;
-//    o i-ésimo elemento destes arrays armazena
-//    a posição do i-ésimo segmento da cobra
+
     Snake snake;
+    Food food;
     int score;
-    int foodX;
-    int foodY;
     
     boolean running;
     
     Timer timer;
-    Random random;
     KeyListener listener;
     
     public UserInterfaceImpl(Stage stage) {
@@ -59,9 +60,8 @@ public class UserInterfaceImpl implements ActionListener,
         //handle da classe UserInterfaceImpl, acabou
         //que ficou esta gambiarra
         stage.addEventHandler(KeyEvent.KEY_PRESSED, (KeyEvent e) -> {
-            if (!timer.isRunning()) startGame();
-            
-            snake.updateMove(e);
+            if (timer.isRunning()) snake.updateMove(e);
+            else startGame();
         });
     }
     
@@ -73,11 +73,13 @@ public class UserInterfaceImpl implements ActionListener,
     }
 
     private void startGame() {
-        random = new Random();
         running = true;
         score = 0;
         
-        newFood();
+        food = new Food(
+                HORIZONTAL_UNITS,
+                VERTICAL_UNITS
+        );
         snake = new Snake(
                 INITIAL_BODY_PARTS,
                 MAX_BODY_PARTS,
@@ -88,22 +90,20 @@ public class UserInterfaceImpl implements ActionListener,
         timer.start();
     }
     
-    private void newFood() {
-        foodX = random.nextInt(SCENE_WIDTH/UNIT_SIZE);
-        foodY = random.nextInt(SCENE_HEIGHT/UNIT_SIZE);
-    }
-    
     private void checkFood(int[] x, int[] y, int bodyParts) {
         // Se a cabeça está na mesma posição que a comida
-        if ((x[0] == foodX) && (y[0] == foodY)) {
-            newFood();
+        if ((x[0] == Food.getX()) && (y[0] == Food.getY())) {
+            food.newFood(
+                    VERTICAL_UNITS,
+                    HORIZONTAL_UNITS
+            );
             // A nova parte do snake recebe as coordenadas da última parte
             x[bodyParts] = x[bodyParts-1];
             y[bodyParts] = y[bodyParts-1];
             
-            snake.setX(x);
-            snake.setY(y);
-            snake.setBodyParts(++bodyParts);
+            Snake.setX(x);
+            Snake.setY(y);
+            Snake.setBodyParts(bodyParts+1);
             score++;
         }
     }
@@ -134,12 +134,12 @@ public class UserInterfaceImpl implements ActionListener,
         
         if (!running) drawGameOverScreen();
         
-        int[] x = snake.getX();
-        int[] y = snake.getY();
-        int bodyParts = snake.getBodyParts();
-        
         drawFood();
-        drawSnake(x, y, bodyParts);
+        drawSnake(
+                Snake.getX(),
+                Snake.getY(),
+                Snake.getBodyParts()
+        );
         showScore(root);
 //        drawGridLines();
     }
@@ -164,8 +164,8 @@ public class UserInterfaceImpl implements ActionListener,
     
     private void drawFood() {
         Circle food = new Circle(
-                (foodX+0.5)*UNIT_SIZE,
-                (foodY+0.5)*UNIT_SIZE,
+                (Food.getX()+0.5)*UNIT_SIZE,
+                (Food.getY()+0.5)*UNIT_SIZE,
                 UNIT_SIZE/2,
                 Color.RED
         );
@@ -212,15 +212,15 @@ public class UserInterfaceImpl implements ActionListener,
     }
     
     private void showScore(Group root) {
-        Label score = new Label();
+        Label lblScore = new Label();
         Font font = Font.font("Ink Free", FontWeight.BOLD, 40);
         
-        score.setText("Score: "+this.score);
-        score.setTextFill(Color.RED);
-        score.setFont(font);
-        score.setTranslateX((SCENE_WIDTH/2)-100);
+        lblScore.setText("Score: "+this.score);
+        lblScore.setTextFill(Color.RED);
+        lblScore.setFont(font);
+        lblScore.setTranslateX((SCENE_WIDTH/2)-100);
         
-        root.getChildren().add(score);
+        root.getChildren().add(lblScore);
     }
     
     @Override
@@ -231,7 +231,7 @@ public class UserInterfaceImpl implements ActionListener,
             int[] y = Snake.getY();
             int bodyParts = Snake.getBodyParts();
             
-            snake.move();
+            this.snake.move();
             checkFood(x, y, bodyParts);
             checkCollisions(x, y, bodyParts);
         }

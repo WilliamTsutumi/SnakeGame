@@ -13,6 +13,8 @@ import snake.constants.SnakeMovement;
  * @author William-UEM
  */
 public class Snake {
+    // O i-ésimo elemento de x[] e de y[] representam
+    // a i-ésima parte do Snake.
     private static int[] x;
     private static int[] y;
     private static int bodyParts;
@@ -21,13 +23,12 @@ public class Snake {
     public Snake(int bodyParts, int maxBodyParts, SnakeMovement move) {
         x = new int[maxBodyParts];
         y = new int[maxBodyParts];
-        this.bodyParts = bodyParts;
-        this.move = move;
+        Snake.bodyParts = bodyParts;
+        Snake.move = move;
     }
     
     public void startSnake(int bodyParts, int x, int y) {
         move = SnakeMovement.RIGHT;
-        bodyParts = bodyParts;
         
         for (int i = 0; i < bodyParts; i++) {
             int xCabeca = x;
